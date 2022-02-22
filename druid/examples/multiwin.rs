@@ -22,10 +22,7 @@ use druid::widget::{
     Align, BackgroundBrush, Button, Controller, ControllerHost, Flex, Label, Padding,
 };
 use druid::Target::Global;
-use druid::{
-    commands as sys_cmds, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx,
-    Handled, LocalizedString, Menu, MenuItem, Target, WindowDesc, WindowId,
-};
+use druid::{commands as sys_cmds, AppDelegate, AppLauncher, Application, Color, Command, Data, DelegateCtx, Handled, LocalizedString, Menu, MenuItem, Target, WindowDesc, WindowId, WindowLevel};
 use tracing::info;
 
 #[derive(Debug, Clone, Default, Data)]
@@ -125,6 +122,7 @@ impl<W: Widget<State>> Widget<State> for Glow<W> {
 }
 
 struct ContextMenuController;
+
 struct Delegate {
     windows: Vec<WindowId>,
 }
@@ -157,7 +155,7 @@ impl AppDelegate<State> for Delegate {
         _env: &Env,
     ) -> Handled {
         if cmd.is(sys_cmds::NEW_FILE) {
-            let new_win = WindowDesc::new(ui_builder())
+            let new_win = WindowDesc::new(ui_builder()).set_level(WindowLevel::Modal(ctx))
                 .menu(make_menu)
                 .window_size((data.selected as f64 * 100.0 + 300.0, 500.0));
             ctx.new_window(new_win);
@@ -196,13 +194,13 @@ impl AppDelegate<State> for Delegate {
 fn make_menu(_: Option<WindowId>, state: &State, _: &Env) -> Menu<State> {
     let mut base = Menu::empty();
     #[cfg(target_os = "macos")]
-    {
-        base = druid::platform_menus::mac::menu_bar();
-    }
+        {
+            base = druid::platform_menus::mac::menu_bar();
+        }
     #[cfg(any(target_os = "windows", target_os = "linux", target_os = "openbsd"))]
-    {
-        base = base.entry(druid::platform_menus::win::file::default());
-    }
+        {
+            base = base.entry(druid::platform_menus::win::file::default());
+        }
     if state.menu_count != 0 {
         let mut custom = Menu::new(LocalizedString::new("Custom"));
 
@@ -212,9 +210,9 @@ fn make_menu(_: Option<WindowId>, state: &State, _: &Env) -> Menu<State> {
                     LocalizedString::new("hello-counter")
                         .with_arg("count", move |_: &State, _| i.into()),
                 )
-                .on_activate(move |_ctx, data, _env| data.selected = i)
-                .enabled_if(move |_data, _env| i % 3 != 0)
-                .selected_if(move |data, _env| i == data.selected),
+                    .on_activate(move |_ctx, data, _env| data.selected = i)
+                    .enabled_if(move |_data, _env| i % 3 != 0)
+                    .selected_if(move |data, _env| i == data.selected),
             );
         }
         base = base.entry(custom);

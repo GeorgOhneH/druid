@@ -146,9 +146,9 @@ impl<T, W: Widget<T>> Controller<T, W> for TooltipController {
                                 .to_point();
                         let win_id = ctx.new_sub_window(
                             WindowConfig::default()
-                                .show_titlebar(false)
+                                .show_titlebar(true)
                                 .window_size_policy(WindowSizePolicy::Content)
-                                .set_level(WindowLevel::Tooltip(ctx.window().clone()))
+                                .set_level(WindowLevel::Modal(ctx.window().clone()))
                                 .set_position(tooltip_position_in_window_coordinates),
                             Label::<()>::new(self.tip.clone()),
                             (),
@@ -351,9 +351,9 @@ fn build_root_widget() -> impl Widget<HelloState> {
 
             ctx.new_sub_window(
                 WindowConfig::default()
-                    .show_titlebar(false)
+                    .show_titlebar(true)
                     .window_size(Size::new(100., 100.))
-                    .set_level(WindowLevel::AppWindow),
+                    .set_level(WindowLevel::Modal(ctx.window().clone())),
                 col,
                 data.clone(),
                 env.clone(),

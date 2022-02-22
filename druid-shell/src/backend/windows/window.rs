@@ -238,6 +238,7 @@ struct WindowState {
     // False for tooltips, to prevent stealing focus from owner window.
     is_focusable: bool,
     window_level: WindowLevel,
+    parent: Option<HWND>,
 }
 
 impl std::fmt::Debug for WindowState {
@@ -1222,6 +1223,11 @@ impl WndProc for MyWndProc {
                 .with_wnd_state(|s| s.handler.request_close())
                 .map(|_| 0),
             DS_REQUEST_DESTROY => {
+                if let Some(state) = self.handle.borrow().state.upgrade() {
+                    if let Some(parent) = state.parent {
+                        unsafe { EnableWindow(parent, true as BOOL); }
+                    }
+                }
                 unsafe {
                     DestroyWindow(hwnd);
                 }
@@ -1396,12 +1402,28 @@ impl WindowBuilder {
                 match level {
                     WindowLevel::AppWindow => (),
                     WindowLevel::Tooltip(parent_window_handle)
-                    | WindowLevel::DropDown(parent_window_handle)
-                    | WindowLevel::Modal(parent_window_handle) => {
+                    | WindowLevel::DropDown(parent_window_handle) => {
                         parent_hwnd = parent_window_handle.0.get_hwnd();
                         dwStyle = WS_POPUP;
                         dwExStyle = WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW;
                         focusable = false;
+                        if let Some(point_in_window_coord) = self.position {
+                            let screen_point = parent_window_handle.get_position()
+                                + point_in_window_coord.to_vec2();
+                            let scaled_point = WindowBuilder::scale_sub_window_position(
+                                screen_point,
+                                parent_window_handle.get_scale(),
+                            );
+                            pos_x = scaled_point.x as i32;
+                            pos_y = scaled_point.y as i32;
+                        } else {
+                            warn!("No position provided for subwindow!");
+                        }
+                    }
+                    WindowLevel::Modal(parent_window_handle) => {
+                        dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME;
+                        dwExStyle = 0;
+                        parent_hwnd = parent_window_handle.0.get_hwnd();
                         if let Some(point_in_window_coord) = self.position {
                             let screen_point = parent_window_handle.get_position()
                                 + point_in_window_coord.to_vec2();
@@ -1438,6 +1460,7 @@ impl WindowBuilder {
                 active_text_input: Cell::new(None),
                 is_focusable: focusable,
                 window_level,
+                parent: parent_hwnd,
             };
             let win = Rc::new(window);
             let handle = WindowHandle {
@@ -1515,6 +1538,10 @@ impl WindowBuilder {
                     };
                 }
             }
+
+            if let Some(parent) = parent_hwnd {
+                EnableWindow(parent, false as BOOL);
+            };
 
             self.app.add_window(hwnd);
 
