@@ -1424,18 +1424,6 @@ impl WindowBuilder {
                         dwStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME;
                         dwExStyle = 0;
                         parent_hwnd = parent_window_handle.0.get_hwnd();
-                        if let Some(point_in_window_coord) = self.position {
-                            let screen_point = parent_window_handle.get_position()
-                                + point_in_window_coord.to_vec2();
-                            let scaled_point = WindowBuilder::scale_sub_window_position(
-                                screen_point,
-                                parent_window_handle.get_scale(),
-                            );
-                            pos_x = scaled_point.x as i32;
-                            pos_y = scaled_point.y as i32;
-                        } else {
-                            warn!("No position provided for subwindow!");
-                        }
                     }
                 }
             } else {
